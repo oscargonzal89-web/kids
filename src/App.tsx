@@ -272,6 +272,8 @@ function App() {
           <>
             <Profile
               parentName={userData.parent?.name}
+              parentEmail={userData.parent?.email}
+              parentRelationship={userData.parent?.relationship}
               childName={userData.child?.name || userData.child?.nickname}
               onBack={handleBackToHome}
               onLogout={() => {
@@ -280,6 +282,12 @@ function App() {
                 setSaveError(null)
                 setAuthed(false)
                 setAppState('splash')
+              }}
+              onProfileUpdated={(data) => {
+                setUserData((prev) => ({
+                  ...prev,
+                  parent: prev.parent ? { ...prev.parent, ...data } : { name: data.name, email: data.email, relationship: data.relationship },
+                }))
               }}
             />
             <BottomNav currentRoute="profile" onNavigate={handleNavigate} />

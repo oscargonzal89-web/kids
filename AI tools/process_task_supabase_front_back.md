@@ -81,8 +81,8 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 
 ## 9. Perfil de usuario (lectura/edición desde `profiles`)
 
-- [ ] **9.1** Pantalla Perfil: mostrar nombre/hijo desde estado ya cargado (ya viene de `profiles` + `children`)
-- [ ] **9.2** (Opcional) Editar perfil: formulario que llame `upsertProfile` y actualice estado local
+- [x] **9.1** Pantalla Perfil: mostrar nombre, correo, relación e hij@ desde estado cargado (`profiles` + `children`)
+- [x] **9.2** Editar perfil: formulario (nombre, correo, relación) que llama `upsertProfile` y `onProfileUpdated` para actualizar estado en App
 
 ---
 
@@ -120,11 +120,12 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 | `src/services/chat.service.ts` | getOrCreateSession, getMessages, addMessage (chat_sessions, chat_messages) |
 | `src/services/moments.service.ts` | getMoments, addMoment (child_memory_facts key=moment) |
 | `src/components/MomentsKids.tsx` | Lista momentos desde Supabase, formulario Agregar recuerdo |
+| `src/components/Profile.tsx` | Muestra perfil (nombre, correo, relación, hij@), formulario Editar perfil + upsertProfile |
 | *(pendiente)* `src/lib/supabase/database.types.ts` | Tipos generados de Supabase |
 
 ---
 
 ## Resumen de estado
 
-- **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar**, **Chat**, **Momentos KIDS (child_memory_facts)**.
-- **Pendiente:** Opcional edición de perfil, tipos generados y RLS para las tablas nuevas.
+- **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar**, **Chat**, **Momentos KIDS**, **Perfil (lectura + edición)**.
+- **Pendiente:** Tipos generados desde Supabase y RLS para tablas nuevas (10.2).
