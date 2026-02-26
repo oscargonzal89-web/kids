@@ -103,6 +103,7 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 | Archivo | Propósito |
 |---------|-----------|
 | `src/lib/supabase/client.ts` | Cliente Supabase (URL + anon key) |
+| `src/vite-env.d.ts` | Tipos de Vite (`import.meta.env`) para que el build pase |
 | `src/services/auth.service.ts` | signUp, signIn, signOut |
 | `src/services/profile.service.ts` | getProfile, upsertProfile (profiles) |
 | `src/services/children.service.ts` | getChildren, insertChild (children) |
