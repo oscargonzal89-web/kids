@@ -61,10 +61,10 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 
 ## 7. Chat con Nani (tablas `chat_sessions`, `chat_messages`)
 
-- [ ] **7.1** Servicio `chat.service.ts`: crear/obtener sesión activa (`chat_sessions`) por user_id + child_id; listar mensajes de una sesión (`chat_messages`)
-- [ ] **7.2** Al abrir Chat: cargar o crear sesión y cargar mensajes desde Supabase (sustituir estado local inicial)
-- [ ] **7.3** Al enviar mensaje usuario: insertar en `chat_messages` (role `user`) y opcionalmente respuesta Nani (role `assistant`) cuando se integre IA
-- [ ] **7.4** Tipos/mapeo: `role` (user/assistant), `content`, `meta` si se usa; sincronizar con el tipo `Message` del componente Chat
+- [x] **7.1** Servicio `chat.service.ts`: crear/obtener sesión activa (`chat_sessions`) por user_id + child_id; listar mensajes de una sesión (`chat_messages`)
+- [x] **7.2** Al abrir Chat: cargar o crear sesión y cargar mensajes desde Supabase (sustituir estado local inicial)
+- [x] **7.3** Al enviar mensaje usuario: insertar en `chat_messages` (role `user`) y opcionalmente respuesta Nani (role `assistant`) cuando se integre IA
+- [x] **7.4** Tipos/mapeo: `role` (user/assistant), `content`, `meta` si se usa; sincronizar con el tipo `Message` del componente Chat
 
 ---
 
@@ -115,7 +115,7 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 | `src/components/OnboardingHome.tsx` | Formulario hogar → HomeData |
 | `src/components/Explore.tsx` | Tab Explorar: lista de planes desde Supabase, Guardar/Ocultar por plan |
 | `src/services/explorePlans.service.ts` | listPlans (filtros), getInteractions, setInteraction, removeInteraction |
-| *(pendiente)* `src/services/chat.service.ts` | Sesiones y mensajes de chat |
+| `src/services/chat.service.ts` | getOrCreateSession, getMessages, addMessage (chat_sessions, chat_messages) |
 | *(pendiente)* `src/services/childMemory.service.ts` (o similar) | child_memory_facts / momentos |
 | *(pendiente)* `src/lib/supabase/database.types.ts` | Tipos generados de Supabase |
 
@@ -123,5 +123,5 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 
 ## Resumen de estado
 
-- **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar (explore_plans + explore_plan_interactions)**.
-- **Pendiente:** Chat (sesiones + mensajes), Momentos KIDS / child_memory_facts, opcional edición de perfil, tipos generados y RLS para las tablas nuevas.
+- **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar (explore_plans + explore_plan_interactions)**, **Chat (chat_sessions + chat_messages)**.
+- **Pendiente:** Momentos KIDS / child_memory_facts, opcional edición de perfil, tipos generados y RLS para las tablas nuevas.

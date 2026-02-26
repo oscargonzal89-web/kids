@@ -242,6 +242,7 @@ function App() {
           <Chat
             parentName={userData.parent?.name}
             childName={userData.child?.name || userData.child?.nickname}
+            childId={firstChildId ?? undefined}
             onNavigate={handleNavigate}
           />
         )
