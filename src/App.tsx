@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './styles/globals.css'
 
 import AuthGate from './pages/AuthGate'
@@ -13,6 +13,11 @@ import { MomentsKids } from './components/MomentsKids'
 import { Explore } from './components/Explore'
 import { Profile } from './components/Profile'
 import { BottomNav } from './components/BottomNav'
+
+import { getProfile, upsertProfile } from './services/profile.service'
+import { getChildren, insertChild } from './services/children.service'
+import { getFamilyContext, upsertFamilyContext } from './services/familyContext.service'
+import { signOut as authSignOut } from './services/auth.service'
 
 type AppState =
   | 'splash'
@@ -32,35 +37,120 @@ interface UserData {
 }
 
 function App() {
-  // Auth gate
   const [authed, setAuthed] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const [appState, setAppState] = useState<AppState>('splash')
   const [userData, setUserData] = useState<UserData>({})
+  const [firstChildId, setFirstChildId] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  // 1) Block app until authenticated
+  // Load profile, children, family_context when authed and set initial screen
+  useEffect(() => {
+    if (!authed) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    Promise.all([getProfile(), getChildren(), getFamilyContext()])
+      .then(([profile, children, familyContext]) => {
+        if (cancelled) return
+        const parent: ParentData | undefined = profile
+          ? { name: profile.name ?? '', email: profile.email ?? '', relationship: profile.relationship ?? '' }
+          : undefined
+        const firstChild = children[0]
+        const child: ChildData | undefined = firstChild
+          ? {
+              name: firstChild.name,
+              nickname: firstChild.nickname ?? '',
+              birthDate: firstChild.birthdate ?? '',
+              favoriteColor: (firstChild.favorites as { color?: string }).color ?? '',
+              favoriteAnimal: (firstChild.favorites as { animal?: string }).animal ?? '',
+              city: familyContext?.city ?? '',
+            }
+          : undefined
+        const home: HomeData | undefined = familyContext
+          ? {
+              hasPets: Array.isArray(familyContext.pets) && familyContext.pets.length > 0,
+              sleepTime: familyContext.sleep_time ?? '',
+              mealTime: familyContext.meal_time ?? '',
+            }
+          : undefined
+        setUserData({ parent, child, home })
+        setFirstChildId(firstChild?.id ?? null)
+        if (!profile) setAppState('splash')
+        else if (!firstChild) setAppState('onboarding-child')
+        else if (!familyContext) setAppState('onboarding-home')
+        else setAppState('home')
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Error loading user data:', err)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [authed])
+
   if (!authed) {
     return <AuthGate onAuthed={() => setAuthed(true)} />
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <p className="text-gray-600 font-nunito">Cargando...</p>
+      </div>
+    )
   }
 
   const handleSplashComplete = () => {
     setAppState('onboarding-parent')
   }
 
-  const handleParentComplete = (data: ParentData) => {
-    setUserData((prev) => ({ ...prev, parent: data }))
-    setAppState('onboarding-child')
+  const handleParentComplete = async (data: ParentData) => {
+    setSaveError(null)
+    try {
+      await upsertProfile({ name: data.name, email: data.email, relationship: data.relationship })
+      setUserData((prev) => ({ ...prev, parent: data }))
+      setAppState('onboarding-child')
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Error al guardar')
+    }
   }
 
-  const handleChildComplete = (data: ChildData) => {
-    setUserData((prev) => ({ ...prev, child: data }))
-    setAppState('onboarding-home')
+  const handleChildComplete = async (data: ChildData) => {
+    setSaveError(null)
+    try {
+      const row = await insertChild({
+        name: data.name,
+        nickname: data.nickname || undefined,
+        birthdate: data.birthDate,
+        favorites: { color: data.favoriteColor, animal: data.favoriteAnimal },
+      })
+      setUserData((prev) => ({ ...prev, child: data }))
+      setFirstChildId(row.id)
+      setAppState('onboarding-home')
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Error al guardar')
+    }
   }
 
-  const handleHomeComplete = (data: HomeData) => {
-    setUserData((prev) => ({ ...prev, home: data }))
-    // Aquí luego guardaremos en backend
-    setAppState('home')
+  const handleHomeComplete = async (data: HomeData) => {
+    setSaveError(null)
+    try {
+      await upsertFamilyContext({
+        city: userData.child?.city ?? null,
+        pets: data.hasPets ? [{}] : [],
+        sleep_time: data.sleepTime || null,
+        meal_time: data.mealTime || null,
+      })
+      setUserData((prev) => ({ ...prev, home: data }))
+      setAppState('home')
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Error al guardar')
+    }
   }
 
   const handleNavigate = (route: string) => {
@@ -172,7 +262,7 @@ function App() {
       case 'explore':
         return (
           <>
-            <Explore onBack={handleBackToHome} />
+            <Explore onBack={handleBackToHome} childId={firstChildId ?? undefined} />
             <BottomNav currentRoute="explore" onNavigate={handleNavigate} />
           </>
         )
@@ -185,7 +275,10 @@ function App() {
               childName={userData.child?.name || userData.child?.nickname}
               onBack={handleBackToHome}
               onLogout={() => {
+                authSignOut()
                 setUserData({})
+                setSaveError(null)
+                setAuthed(false)
                 setAppState('splash')
               }}
             />
@@ -198,7 +291,16 @@ function App() {
     }
   }
 
-  return <div className="App">{renderCurrentScreen()}</div>
+  return (
+    <div className="App">
+      {saveError && (
+        <div className="bg-red-100 text-red-800 px-4 py-2 text-center text-sm font-nunito">
+          {saveError}
+        </div>
+      )}
+      {renderCurrentScreen()}
+    </div>
+  )
 }
 
 export default App
