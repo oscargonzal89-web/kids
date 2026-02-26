@@ -89,7 +89,7 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 ## 10. RLS y seguridad
 
 - [x] **10.1** Verificar que existan políticas RLS para `profiles`, `children`, `family_context` (select/insert/update por usuario)
-- [ ] **10.2** Añadir o revisar RLS para `explore_plan_interactions`, `chat_sessions`, `chat_messages`, `child_memory_facts` cuando se conecten
+- [x] **10.2** Revisar RLS para `explore_plan_interactions`, `chat_sessions`, `chat_messages`, `child_memory_facts`: políticas select/insert/update/delete por usuario ya existen; INSERT con WITH CHECK (user_id = auth.uid() y child_id del usuario)
 
 ---
 
@@ -128,4 +128,4 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 ## Resumen de estado
 
 - **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar**, **Chat**, **Momentos KIDS**, **Perfil (lectura + edición)**.
-- **Pendiente:** Tipos generados desde Supabase y RLS para tablas nuevas (10.2).
+- **Pendiente:** Tipos generados desde Supabase (punto 11).
