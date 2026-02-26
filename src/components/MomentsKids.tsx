@@ -22,14 +22,17 @@ interface MomentsKidsProps {
 
 const EMOJIS = ['💕', '🦶', '😊', '💬', '👶', '🌟', '🎂', '❤️', '📸', '✨'];
 
+type MomentMeta = { date?: string; emoji?: string; note?: string } | null;
+
 function momentFromRow(row: MomentRow): Moment {
-  const meta = row.meta ?? {};
+  const meta = (row.meta ?? {}) as MomentMeta;
+  const m = meta && typeof meta === 'object' ? meta : {};
   return {
     id: row.id,
     title: row.value,
-    date: meta.date ? new Date(meta.date) : new Date(row.created_at),
-    emoji: meta.emoji ?? '💕',
-    note: meta.note ?? undefined,
+    date: m.date ? new Date(m.date) : new Date(row.created_at),
+    emoji: m.emoji ?? '💕',
+    note: m.note ?? undefined,
   };
 }
 

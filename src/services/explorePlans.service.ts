@@ -1,20 +1,7 @@
 import { supabase } from '../lib/supabase/client'
+import type { Tables } from '../lib/supabase/database.types'
 
-export interface ExplorePlanRow {
-  id: string
-  title: string
-  description: string | null
-  age_min_months: number
-  age_max_months: number | null
-  city: string | null
-  climate: string | null
-  category: string | null
-  duration_minutes: number | null
-  cost_level: string | null
-  location_type: string | null
-  is_active: boolean
-  created_at: string
-}
+export type ExplorePlanRow = Tables<'explore_plans'>
 
 export interface ExplorePlanFilters {
   category?: string

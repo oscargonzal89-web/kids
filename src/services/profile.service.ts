@@ -1,13 +1,7 @@
 import { supabase } from '../lib/supabase/client'
+import type { Tables } from '../lib/supabase/database.types'
 
-export interface ProfileRow {
-  id: string
-  name: string | null
-  email: string | null
-  tone: string
-  relationship: string | null
-  created_at: string
-}
+export type ProfileRow = Tables<'profiles'>
 
 export async function getProfile(): Promise<ProfileRow | null> {
   const { data: { user } } = await supabase.auth.getUser()

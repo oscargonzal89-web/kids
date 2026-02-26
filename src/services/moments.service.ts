@@ -1,16 +1,9 @@
 import { supabase } from '../lib/supabase/client'
+import type { Tables } from '../lib/supabase/database.types'
 
 const MOMENT_KEY = 'moment'
 
-export interface MomentRow {
-  id: string
-  user_id: string
-  child_id: string
-  key: string
-  value: string
-  meta: { date?: string; emoji?: string; note?: string } | null
-  created_at: string
-}
+export type MomentRow = Tables<'child_memory_facts'>
 
 export interface MomentInput {
   title: string

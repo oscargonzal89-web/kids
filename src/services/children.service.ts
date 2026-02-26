@@ -1,15 +1,7 @@
 import { supabase } from '../lib/supabase/client'
+import type { Tables } from '../lib/supabase/database.types'
 
-export interface ChildRow {
-  id: string
-  user_id: string
-  name: string
-  nickname: string | null
-  birthdate: string | null
-  avatar_url: string | null
-  favorites: { color?: string; animal?: string }
-  created_at: string
-}
+export type ChildRow = Tables<'children'>
 
 export async function getChildren(): Promise<ChildRow[]> {
   const { data: { user } } = await supabase.auth.getUser()

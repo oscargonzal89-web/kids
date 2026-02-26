@@ -95,8 +95,8 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 
 ## 11. Tipos y mantenibilidad
 
-- [ ] **11.1** Generar tipos TypeScript desde Supabase (`supabase gen types typescript`) y guardar en repo (ej. `src/lib/supabase/database.types.ts`)
-- [ ] **11.2** Usar esos tipos en servicios y componentes en lugar de interfaces locales donde aplique
+- [x] **11.1** Generar tipos TypeScript desde Supabase y guardar en `src/lib/supabase/database.types.ts` (Database, Tables, TablesInsert, TablesUpdate)
+- [x] **11.2** Usar tipos en servicios: ProfileRow, ChildRow, FamilyContextRow, ExplorePlanRow, ChatSessionRow, ChatMessageRow, MomentRow definidos con `Tables<'tabla'>`
 
 ---
 
@@ -105,6 +105,7 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 | Archivo | Propósito |
 |---------|-----------|
 | `src/lib/supabase/client.ts` | Cliente Supabase (URL + anon key) |
+| `src/lib/supabase/database.types.ts` | Tipos generados: Database, Tables, TablesInsert, TablesUpdate |
 | `src/vite-env.d.ts` | Tipos de Vite (`import.meta.env`) para que el build pase |
 | `src/services/auth.service.ts` | signUp, signIn, signOut |
 | `src/services/profile.service.ts` | getProfile, upsertProfile (profiles) |
@@ -121,11 +122,10 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 | `src/services/moments.service.ts` | getMoments, addMoment (child_memory_facts key=moment) |
 | `src/components/MomentsKids.tsx` | Lista momentos desde Supabase, formulario Agregar recuerdo |
 | `src/components/Profile.tsx` | Muestra perfil (nombre, correo, relación, hij@), formulario Editar perfil + upsertProfile |
-| *(pendiente)* `src/lib/supabase/database.types.ts` | Tipos generados de Supabase |
 
 ---
 
 ## Resumen de estado
 
 - **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar**, **Chat**, **Momentos KIDS**, **Perfil (lectura + edición)**.
-- **Pendiente:** Tipos generados desde Supabase (punto 11).
+- **Hecho (completo):** Puntos 1–11. Tipos generados en `database.types.ts` y usados en servicios.

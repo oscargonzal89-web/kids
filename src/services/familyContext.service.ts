@@ -1,16 +1,7 @@
 import { supabase } from '../lib/supabase/client'
+import type { Tables } from '../lib/supabase/database.types'
 
-export interface FamilyContextRow {
-  id: string
-  user_id: string
-  home_type: string | null
-  city: string | null
-  climate: string | null
-  pets: unknown[]
-  sleep_time: string | null
-  meal_time: string | null
-  created_at: string
-}
+export type FamilyContextRow = Tables<'family_context'>
 
 export async function getFamilyContext(): Promise<FamilyContextRow | null> {
   const { data: { user } } = await supabase.auth.getUser()

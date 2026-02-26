@@ -1,25 +1,8 @@
 import { supabase } from '../lib/supabase/client'
+import type { Tables } from '../lib/supabase/database.types'
 
-export interface ChatSessionRow {
-  id: string
-  user_id: string
-  child_id: string
-  title: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface ChatMessageRow {
-  id: string
-  session_id: string
-  user_id: string
-  child_id: string
-  role: string
-  content: string
-  meta: unknown
-  created_at: string
-}
+export type ChatSessionRow = Tables<'chat_sessions'>
+export type ChatMessageRow = Tables<'chat_messages'>
 
 /** Obtiene la sesión activa para user + child, o crea una nueva. */
 export async function getOrCreateSession(childId: string): Promise<ChatSessionRow> {
