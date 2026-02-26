@@ -252,9 +252,8 @@ function App() {
           <>
             <MomentsKids
               onBack={handleBackToHome}
-              onAddMoment={() => {
-                console.log('Agregar momento')
-              }}
+              onAddMoment={() => {}}
+              childId={firstChildId ?? undefined}
             />
             <BottomNav currentRoute="moments" onNavigate={handleNavigate} />
           </>

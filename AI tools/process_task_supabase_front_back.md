@@ -4,6 +4,8 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 
 **Protocolo:** Seguir las reglas de `process_task.md`: una sub-tarea a la vez, pedir confirmación al usuario antes de continuar, marcar `[x]` al completar, commit cuando todos los sub-tasks de un padre estén listos.
 
+**Después de cada push:** Actualizar siempre este archivo: marcar tareas completadas, mantener "Relevant Files" y el "Resumen de estado" al día.
+
 ---
 
 ## 1. Auth y cliente Supabase
@@ -70,10 +72,10 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 
 ## 8. Momentos KIDS / memoria (tabla `child_memory_facts`)
 
-- [ ] **8.1** Decidir modelo: usar `child_memory_facts` para “momentos” (ej. key tipo `moment`, value descripción) o proponer nueva tabla `moments` si el equipo prefiere
-- [ ] **8.2** Servicio para leer/escribir hechos de memoria del niño (por child_id); si se usan momentos, mapear a `key`/`value` o a nueva tabla
-- [ ] **8.3** Pantalla Momentos KIDS: listar datos desde backend (Supabase) en lugar de array local
-- [ ] **8.4** “Agregar recuerdo”: guardar en Supabase y refrescar lista
+- [x] **8.1** Decidir modelo: usar `child_memory_facts` para “momentos” (key = `moment`, value = título, meta = date/emoji/note)
+- [x] **8.2** Servicio `moments.service.ts`: getMoments(childId), addMoment(childId, input)
+- [x] **8.3** Pantalla Momentos KIDS: listar datos desde Supabase (getMoments), loading y estado vacío
+- [x] **8.4** “Agregar recuerdo”: formulario inline, guardar con addMoment y refrescar lista
 
 ---
 
@@ -116,12 +118,13 @@ Documento de tareas para conectar la app KIDS (frontend React) con todas las tab
 | `src/components/Explore.tsx` | Tab Explorar: lista de planes desde Supabase, Guardar/Ocultar por plan |
 | `src/services/explorePlans.service.ts` | listPlans (filtros), getInteractions, setInteraction, removeInteraction |
 | `src/services/chat.service.ts` | getOrCreateSession, getMessages, addMessage (chat_sessions, chat_messages) |
-| *(pendiente)* `src/services/childMemory.service.ts` (o similar) | child_memory_facts / momentos |
+| `src/services/moments.service.ts` | getMoments, addMoment (child_memory_facts key=moment) |
+| `src/components/MomentsKids.tsx` | Lista momentos desde Supabase, formulario Agregar recuerdo |
 | *(pendiente)* `src/lib/supabase/database.types.ts` | Tipos generados de Supabase |
 
 ---
 
 ## Resumen de estado
 
-- **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar (explore_plans + explore_plan_interactions)**, **Chat (chat_sessions + chat_messages)**.
-- **Pendiente:** Momentos KIDS / child_memory_facts, opcional edición de perfil, tipos generados y RLS para las tablas nuevas.
+- **Hecho:** Auth, perfiles, hijos, contexto familiar, flujo de carga y onboarding, campos extra (relationship, sleep_time, meal_time), RLS básico, **Explorar**, **Chat**, **Momentos KIDS (child_memory_facts)**.
+- **Pendiente:** Opcional edición de perfil, tipos generados y RLS para las tablas nuevas.
