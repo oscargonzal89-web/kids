@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { Cloud, Send, Loader2 } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { getOrCreateSession, getMessages, addMessage, type ChatMessageRow } from '../services/chat.service';
+import { sendToNani, type NaniContext, type MemoryFact } from '../services/nani.service';
+import { getMemoryFacts, saveMemoryFacts } from '../services/memory.service';
 
 interface Message {
   id: string;
@@ -13,10 +15,11 @@ interface Message {
   timestamp: Date;
 }
 
-interface ChatProps {
+export interface ChatProps {
   parentName?: string;
   childName?: string;
   childId?: string;
+  naniContext?: NaniContext;
   onNavigate?: (route: string) => void;
 }
 
@@ -29,14 +32,14 @@ function messageFromRow(row: ChatMessageRow): Message {
   };
 }
 
-const PLACEHOLDER_REPLY = '¡Gracias por tu mensaje! Estoy aquí para ayudarte en todo lo que necesites. ¿Hay algo específico en lo que pueda asistirte hoy? 💙';
-
-export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNavigate }) => {
+export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, naniContext, onNavigate }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(!!childId);
   const [sending, setSending] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [memoryFacts, setMemoryFacts] = useState<MemoryFact[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const welcomeMessage: Message = {
@@ -46,6 +49,7 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNa
     timestamp: new Date(),
   };
 
+  // Cargar sesión, mensajes y memoria
   useEffect(() => {
     if (!childId) {
       setMessages([welcomeMessage]);
@@ -54,13 +58,17 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNa
     }
     let cancelled = false;
     setLoading(true);
-    getOrCreateSession(childId)
-      .then((session) => {
+
+    Promise.all([
+      getOrCreateSession(childId),
+      getMemoryFacts(childId),
+    ])
+      .then(async ([session, facts]) => {
         if (cancelled) return;
         setSessionId(session.id);
-        return getMessages(session.id);
-      })
-      .then((rows) => {
+        setMemoryFacts(facts.map((f) => ({ key: f.key, value: f.value })));
+
+        const rows = await getMessages(session.id);
         if (cancelled) return;
         if (rows && rows.length > 0) {
           setMessages(rows.map(messageFromRow));
@@ -82,67 +90,105 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNa
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  /** Construye el historial de mensajes en formato Claude API */
+  function buildChatHistory(currentMessages: Message[]): { role: 'user' | 'assistant'; content: string }[] {
+    return currentMessages
+      .filter((m) => m.id !== 'welcome')
+      .map((m) => ({
+        role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
+        content: m.text,
+      }));
+  }
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || sending) return;
     const text = inputText.trim();
     setInputText('');
+    setError(null);
 
-    if (sessionId && childId) {
-      setSending(true);
-      try {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setSending(true);
+
+    try {
+      // Guardar mensaje del usuario en Supabase
+      if (sessionId && childId) {
         const userRow = await addMessage(sessionId, childId, 'user', text);
-        setMessages((prev) => [...prev, messageFromRow(userRow)]);
-
-        const assistantRow = await addMessage(sessionId, childId, 'assistant', PLACEHOLDER_REPLY);
-        setMessages((prev) => [...prev, messageFromRow(assistantRow)]);
-      } catch (err) {
-        console.error('Error sending message:', err);
-      } finally {
-        setSending(false);
+        setMessages((prev) => prev.map((m) => m.id === userMessage.id ? messageFromRow(userRow) : m));
       }
-    } else {
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        text,
-        sender: 'user',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-      setTimeout(() => {
+
+      // Obtener respuesta de Nani (IA real o fallback)
+      let naniReply: string;
+      let newFacts: MemoryFact[] = [];
+
+      if (naniContext) {
+        const history = buildChatHistory([...messages, userMessage]);
+        const response = await sendToNani(history, naniContext, memoryFacts);
+        naniReply = response.reply;
+        newFacts = response.newFacts;
+      } else {
+        naniReply = `¡Hola ${parentName || ''}! Estoy aquí para ayudarte. ¿En qué puedo asistirte hoy? 💙`;
+      }
+
+      // Guardar respuesta de Nani en Supabase y mostrarla
+      if (sessionId && childId) {
+        const assistantRow = await addMessage(sessionId, childId, 'assistant', naniReply);
+        setMessages((prev) => [...prev, messageFromRow(assistantRow)]);
+
+        // Guardar nuevos hechos en Supabase (en background, no bloquea UI)
+        if (newFacts.length > 0) {
+          saveMemoryFacts(childId, newFacts)
+            .then(() => {
+              setMemoryFacts((prev) => {
+                const updated = [...prev];
+                for (const fact of newFacts) {
+                  const existing = updated.findIndex((f) => f.key === fact.key);
+                  if (existing >= 0) {
+                    updated[existing] = fact;
+                  } else {
+                    updated.push(fact);
+                  }
+                }
+                return updated;
+              });
+            })
+            .catch((err) => console.error('Error saving memory facts:', err));
+        }
+      } else {
         setMessages((prev) => [
           ...prev,
           {
             id: (Date.now() + 1).toString(),
-            text: PLACEHOLDER_REPLY,
+            text: naniReply,
             sender: 'nani',
             timestamp: new Date(),
           },
         ]);
-      }, 1000);
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setError('No pude conectar con Nani. Intenta de nuevo.');
+    } finally {
+      setSending(false);
     }
   };
 
-  const handleQuickAction = (action: string) => {
-    const actionMessage: Message = {
-      id: Date.now().toString(),
-      text: action,
-      sender: 'user',
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, actionMessage]);
-    if (sessionId && childId) {
-      addMessage(sessionId, childId, 'user', action).catch((err) => console.error(err));
-    }
+  const handleQuickAction = (label: string) => {
+    setInputText(label);
   };
 
   const quickActions = [
-    { label: 'Ver planes', action: 'planes' },
     { label: 'Tips de sueño', action: 'sueño' },
-    { label: 'Marketplace', action: 'marketplace' },
-    { label: 'Agenda', action: 'agenda' },
-    { label: 'Rutinas', action: 'rutinas' },
-    { label: 'Comunidad', action: 'comunidad' },
+    { label: 'Ideas de actividades', action: 'actividades' },
+    { label: 'Alimentación', action: 'alimentación' },
+    { label: 'Desarrollo del bebé', action: 'desarrollo' },
   ];
 
   return (
@@ -156,7 +202,9 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNa
           </Avatar>
           <div className="flex-1">
             <p className="font-semibold text-gray-800 font-nunito text-lg">Nani</p>
-            <p className="text-xs text-gray-500">Asistente personal • En línea</p>
+            <p className="text-xs text-gray-500">
+              {sending ? 'Escribiendo...' : 'Asistente personal • En línea'}
+            </p>
           </div>
         </div>
 
@@ -186,10 +234,26 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNa
                   </div>
                 </div>
               ))}
+              {sending && (
+                <div className="flex justify-start animate-fade-in">
+                  <div className="bg-white text-gray-800 shadow-md rounded-2xl p-4">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-lavender-400" />
+                      <p className="font-nunito text-sm text-gray-400">Nani está pensando...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {messages.length <= 2 && (
+            {error && (
+              <div className="px-4 pb-2">
+                <p className="text-sm text-red-500 text-center font-nunito">{error}</p>
+              </div>
+            )}
+
+            {messages.length <= 2 && !sending && (
               <div className="px-4 pb-2">
                 <div className="flex flex-wrap gap-2">
                   {quickActions.map((action) => (
@@ -221,7 +285,7 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, onNa
             <Button
               type="submit"
               className="rounded-full bg-lavender-400 hover:bg-lavender-500 text-white p-3 shadow-lg"
-              disabled={sending}
+              disabled={sending || !inputText.trim()}
             >
               {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
