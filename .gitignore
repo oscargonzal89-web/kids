@@ -5,3 +5,4 @@ dist/
 .env.local.save
 .vscode/
 .DS_Store
+.vercel

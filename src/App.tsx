@@ -18,6 +18,7 @@ import { getProfile, upsertProfile } from './services/profile.service'
 import { getChildren, insertChild } from './services/children.service'
 import { getFamilyContext, upsertFamilyContext } from './services/familyContext.service'
 import { signOut as authSignOut } from './services/auth.service'
+import type { NaniContext } from './services/nani.service'
 
 type AppState =
   | 'splash'
@@ -237,15 +238,43 @@ function App() {
           </>
         )
 
-      case 'chat':
+      case 'chat': {
+        const naniContext: NaniContext | undefined = userData.parent && userData.child
+          ? {
+              parent: {
+                name: userData.parent.name,
+                relationship: userData.parent.relationship,
+              },
+              child: {
+                name: userData.child.name,
+                nickname: userData.child.nickname,
+                birthDate: userData.child.birthDate,
+                favorites: {
+                  color: userData.child.favoriteColor,
+                  animal: userData.child.favoriteAnimal,
+                },
+                city: userData.child.city,
+              },
+              home: userData.home
+                ? {
+                    hasPets: userData.home.hasPets,
+                    sleepTime: userData.home.sleepTime,
+                    mealTime: userData.home.mealTime,
+                  }
+                : undefined,
+            }
+          : undefined;
+
         return (
           <Chat
             parentName={userData.parent?.name}
             childName={userData.child?.name || userData.child?.nickname}
             childId={firstChildId ?? undefined}
+            naniContext={naniContext}
             onNavigate={handleNavigate}
           />
-        )
+        );
+      }
 
       case 'moments':
         return (
