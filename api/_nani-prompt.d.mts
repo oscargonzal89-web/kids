@@ -36,12 +36,26 @@ export interface ChatMessage {
   content: string;
 }
 
+/** Contexto de planes: D5 (`available`) y C3 (`saved` / `hidden`). */
+export interface NaniPlanContext {
+  available: {
+    title: string;
+    description: string | null;
+    category: string | null;
+    costLevel: string | null;
+    durationMinutes: number | null;
+  }[];
+  saved: string[];
+  hidden: string[];
+}
+
 export interface NaniTurnInput {
   messages: ChatMessage[];
   parent: ParentContext;
   child: ChildContext;
   home?: HomeContext;
   memoryFacts?: MemoryFact[];
+  planContext?: NaniPlanContext | null;
 }
 
 export interface NaniTurnResult {

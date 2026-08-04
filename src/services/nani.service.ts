@@ -23,6 +23,10 @@ export interface MemoryFact {
   value: string;
 }
 
+/** Contexto de planes que Nani recibe: D5 (catálogo) y C3 (preferencias). */
+export type { NaniPlanContext } from './explorePlans.service';
+import type { NaniPlanContext } from './explorePlans.service';
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -40,7 +44,8 @@ interface NaniResponse {
 export async function sendToNani(
   messages: ChatMessage[],
   context: NaniContext,
-  memoryFacts: MemoryFact[] = []
+  memoryFacts: MemoryFact[] = [],
+  planContext: NaniPlanContext | null = null
 ): Promise<NaniResponse> {
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -51,6 +56,7 @@ export async function sendToNani(
       child: context.child,
       home: context.home,
       memoryFacts,
+      planContext,
     }),
   });
 

@@ -43,7 +43,61 @@ function formatAge(child) {
     : `${ageMonths} mes(es)`;
 }
 
-export function buildSystemPrompt(parent, child, home, memoryFacts = []) {
+/**
+ * Sección de planes del prompt. Cubre dos ítems:
+ *   D5 — Nani conoce el catálogo real y puede recomendar (rol "Conectora" del PRD).
+ *   C3 — Nani nota qué planes guardó u ocultó el padre/madre.
+ *
+ * Las reglas son deliberadamente estrictas en un punto: Nani NO debe inventar
+ * lugares, horarios ni precios. Un plan inventado en una app de crianza no es
+ * un detalle: es alguien saliendo con un bebé a un sitio que no existe.
+ */
+function buildPlansSection(planContext, childLabel, city) {
+  if (!planContext) return '';
+  const { available = [], saved = [], hidden = [] } = planContext;
+  if (available.length === 0 && saved.length === 0 && hidden.length === 0) return '';
+
+  let section = '';
+
+  if (available.length > 0) {
+    const list = available
+      .map((p) => {
+        const meta = [p.category, p.costLevel, p.durationMinutes ? `~${p.durationMinutes} min` : null]
+          .filter(Boolean)
+          .join(', ');
+        return `- ${p.title}${meta ? ` (${meta})` : ''}${p.description ? `: ${p.description}` : ''}`;
+      })
+      .join('\n');
+
+    section += `
+
+Planes reales disponibles${city ? ` en ${city}` : ''}, ya filtrados para la edad de ${childLabel}:
+${list}
+
+Reglas sobre los planes:
+1. Recomiéndalos solo cuando venga al caso: si te preguntan qué hacer, piden ideas de actividades, o mencionan que tienen un rato libre o un fin de semana. No los saques de la nada.
+2. Máximo 2 por respuesta, y explica por qué le sirven a ${childLabel} a su edad.
+3. NUNCA inventes planes, lugares, horarios ni precios. Si ninguno de la lista encaja con lo que te piden, dilo con naturalidad y da una idea general sin nombrar un lugar específico.`;
+  }
+
+  if (saved.length > 0) {
+    section += `
+
+Planes que ${childLabel === 'tu hij@' ? 'ya guardaron' : 'ya guardaron para ' + childLabel}: ${saved.join(', ')}.
+Le interesaron, así que prioriza planes parecidos a estos.`;
+  }
+
+  if (hidden.length > 0) {
+    section += `
+
+Planes que descartaron: ${hidden.join(', ')}.
+No los recomiendes ni insistas con planes muy parecidos.`;
+  }
+
+  return section;
+}
+
+export function buildSystemPrompt(parent, child, home, memoryFacts = [], planContext = null) {
   const ageText = formatAge(child);
 
   let memorySection = '';
@@ -76,7 +130,7 @@ Contexto de la familia:
 ${home ? `- Mascotas en casa: ${home.hasPets ? 'sí' : 'no'}` : ''}
 ${home?.sleepTime ? `- Hora de dormir: ${home.sleepTime}` : ''}
 ${home?.mealTime ? `- Hora de comidas: ${home.mealTime}` : ''}
-${memorySection}
+${memorySection}${buildPlansSection(planContext, child.nickname || child.name || 'tu hij@', child.city || home?.city)}
 
 Reglas estrictas:
 1. NUNCA diagnostiques enfermedades ni recomiendas medicamentos.
@@ -143,11 +197,14 @@ async function extractFacts(anthropic, messages, childName, existingFacts = []) 
  * Una vuelta completa de conversación con Nani: responde y actualiza memoria.
  * Los handlers HTTP solo validan la petición y serializan lo que devuelve esto.
  */
-export async function chatWithNani(anthropic, { messages, parent, child, home, memoryFacts = [] }) {
+export async function chatWithNani(
+  anthropic,
+  { messages, parent, child, home, memoryFacts = [], planContext = null }
+) {
   const response = await anthropic.messages.create({
     model: NANI_MODEL,
     max_tokens: MAX_TOKENS_REPLY,
-    system: buildSystemPrompt(parent, child, home, memoryFacts),
+    system: buildSystemPrompt(parent, child, home, memoryFacts, planContext),
     messages: messages.slice(-HISTORY_WINDOW),
   });
 

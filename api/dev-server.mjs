@@ -47,14 +47,16 @@ async function handleChat(req, res) {
     return json(res, 400, { error: 'Invalid JSON body' });
   }
 
-  const { messages, parent, child, home, memoryFacts = [] } = payload;
+  const { messages, parent, child, home, memoryFacts = [], planContext = null } = payload;
 
   if (!messages || !parent || !child) {
     return json(res, 400, { error: 'Missing required fields' });
   }
 
   try {
-    const result = await chatWithNani(anthropic, { messages, parent, child, home, memoryFacts });
+    const result = await chatWithNani(anthropic, {
+      messages, parent, child, home, memoryFacts, planContext,
+    });
     return json(res, 200, result);
   } catch (error) {
     console.error('Nani API error:', error);

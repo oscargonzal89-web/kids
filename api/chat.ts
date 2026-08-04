@@ -12,7 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, parent, child, home, memoryFacts = [] } = req.body as NaniTurnInput;
+  const { messages, parent, child, home, memoryFacts = [], planContext = null } =
+    req.body as NaniTurnInput;
 
   if (!messages || !parent || !child) {
     return res.status(400).json({ error: 'Missing required fields: messages, parent, child' });
@@ -25,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       child,
       home,
       memoryFacts,
+      planContext,
     });
 
     return res.status(200).json({ reply, newFacts });

@@ -7,6 +7,8 @@ import { BottomNav } from './BottomNav';
 import { getOrCreateSession, getMessages, addMessage, type ChatMessageRow } from '../services/chat.service';
 import { sendToNani, type NaniContext, type MemoryFact } from '../services/nani.service';
 import { getMemoryFacts, saveMemoryFacts } from '../services/memory.service';
+import { getPlanContextForNani, type NaniPlanContext } from '../services/explorePlans.service';
+import { ageMonthsOrUndefined } from '../lib/age';
 
 interface Message {
   id: string;
@@ -40,6 +42,9 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, nani
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [memoryFacts, setMemoryFacts] = useState<MemoryFact[]>([]);
+  // D5 + C3: el catálogo de planes y las preferencias del usuario, para que Nani
+  // pueda recomendar lugares reales en vez de responder de memoria general.
+  const [planContext, setPlanContext] = useState<NaniPlanContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const welcomeMessage: Message = {
@@ -62,11 +67,18 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, nani
     Promise.all([
       getOrCreateSession(childId),
       getMemoryFacts(childId),
+      // D5 + C3. Nunca lanza: si falla, devuelve contexto vacío y el chat sigue.
+      getPlanContextForNani(
+        childId,
+        ageMonthsOrUndefined(naniContext?.child?.birthDate),
+        naniContext?.child?.city || naniContext?.home?.city
+      ),
     ])
-      .then(async ([session, facts]) => {
+      .then(async ([session, facts, plans]) => {
         if (cancelled) return;
         setSessionId(session.id);
         setMemoryFacts(facts.map((f) => ({ key: f.key, value: f.value })));
+        setPlanContext(plans);
 
         const rows = await getMessages(session.id);
         if (cancelled) return;
@@ -84,6 +96,10 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, nani
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
+    // Deliberadamente solo depende de childId, no de naniContext: ese objeto se
+    // reconstruye en cada render y meterlo aquí dispararía una recarga infinita.
+    // El contexto de planes se refresca solo, porque al navegar a Explorar y
+    // volver este componente se desmonta y se vuelve a montar.
   }, [childId]);
 
   useEffect(() => {
@@ -130,7 +146,7 @@ export const Chat: React.FC<ChatProps> = ({ parentName, childName, childId, nani
 
       if (naniContext) {
         const history = buildChatHistory([...messages, userMessage]);
-        const response = await sendToNani(history, naniContext, memoryFacts);
+        const response = await sendToNani(history, naniContext, memoryFacts, planContext);
         naniReply = response.reply;
         newFacts = response.newFacts;
       } else {
