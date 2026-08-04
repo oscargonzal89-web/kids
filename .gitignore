@@ -6,3 +6,8 @@ dist/
 .vscode/
 .DS_Store
 .vercel
+
+# Documento interno de estrategia. NO subir: el repo es público y este archivo
+# contiene credenciales de las cuentas de prueba, además del diagnóstico de
+# debilidades del proyecto. Vive solo en local.
+PRIORIZACION_NANI.md
