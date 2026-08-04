@@ -18,6 +18,7 @@ import { getProfile, upsertProfile } from './services/profile.service'
 import { getChildren, insertChild } from './services/children.service'
 import { getFamilyContext, upsertFamilyContext } from './services/familyContext.service'
 import { signOut as authSignOut } from './services/auth.service'
+import { ageMonthsOrUndefined } from './lib/age'
 import type { NaniContext } from './services/nani.service'
 
 type AppState =
@@ -291,7 +292,13 @@ function App() {
       case 'explore':
         return (
           <>
-            <Explore onBack={handleBackToHome} childId={firstChildId ?? undefined} />
+            <Explore
+              onBack={handleBackToHome}
+              childId={firstChildId ?? undefined}
+              ageMonths={ageMonthsOrUndefined(userData.child?.birthDate)}
+              city={userData.child?.city || undefined}
+              childName={userData.child?.nickname || userData.child?.name}
+            />
             <BottomNav currentRoute="explore" onNavigate={handleNavigate} />
           </>
         )

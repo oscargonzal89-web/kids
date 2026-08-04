@@ -3,7 +3,8 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Search, MapPin, ShoppingBag, Users, Calendar, Stethoscope, Bookmark, EyeOff, Loader2 } from 'lucide-react';
+import { Search, MapPin, ShoppingBag, Users, Calendar, Stethoscope, Bookmark, EyeOff, Eye, Loader2 } from 'lucide-react';
+import { formatAge } from '../lib/age';
 import {
   listPlans,
   getInteractions,
@@ -15,18 +16,37 @@ import {
 interface ExploreProps {
   onBack: () => void;
   childId?: string;
+  /** Edad del niñ@ en meses. Filtra los planes por rango de edad (ítem B2). */
+  ageMonths?: number;
+  /** Ciudad de la familia. Filtra los planes locales (ítem B2). */
+  city?: string;
+  /** Apodo o nombre del niñ@, solo para los textos de la pantalla. */
+  childName?: string;
 }
 
-export const Explore: React.FC<ExploreProps> = ({ onBack: _onBack, childId }) => {
+export const Explore: React.FC<ExploreProps> = ({
+  onBack: _onBack,
+  childId,
+  ageMonths,
+  city,
+  childName,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [plans, setPlans] = useState<ExplorePlanRow[]>([]);
   const [interactions, setInteractionsState] = useState<Map<string, 'saved' | 'hidden'>>(new Map());
   const [loading, setLoading] = useState(true);
   const [interactionLoading, setInteractionLoading] = useState<string | null>(null);
+  // B3: los planes ocultos se sacan de la lista, pero el usuario puede volver a
+  // verlos para revertir. Sin esta salida, "Ocultar" sería irreversible.
+  const [showHidden, setShowHidden] = useState(false);
 
+  // B2: el motor de personalización ya existía en listPlans() y nadie le pasaba
+  // estos dos datos. Es la diferencia entre "un catálogo" y "planes para mi hij@".
   const filters = useMemo(() => ({
     search: searchQuery.trim() || undefined,
-  }), [searchQuery]);
+    ageMonths,
+    city: city?.trim() || undefined,
+  }), [searchQuery, ageMonths, city]);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +62,7 @@ export const Explore: React.FC<ExploreProps> = ({ onBack: _onBack, childId }) =>
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [filters.search]);
+  }, [filters]);
 
   useEffect(() => {
     if (!childId) return;
@@ -87,6 +107,23 @@ export const Explore: React.FC<ExploreProps> = ({ onBack: _onBack, childId }) =>
     }
   };
 
+  // B3: antes, marcar "Ocultar" solo cambiaba el aspecto de la tarjeta y el plan
+  // seguía en la lista. Aquí sí sale.
+  const hiddenCount = plans.filter((p) => interactions.get(p.id) === 'hidden').length;
+  const visiblePlans = showHidden
+    ? plans
+    : plans.filter((p) => interactions.get(p.id) !== 'hidden');
+
+  // Texto del estado vacío: distingue "no hay nada que buscar" de "no hay planes
+  // para esta edad", que son problemas distintos para el usuario.
+  const emptyMessage = searchQuery.trim()
+    ? 'No hay planes que coincidan con tu búsqueda.'
+    : hiddenCount > 0
+      ? `Ocultaste todos los planes disponibles${city ? ` en ${city}` : ''}.`
+      : ageMonths != null
+        ? `Todavía no hay planes para la edad de ${childName || 'tu hij@'}${city ? ` en ${city}` : ''}. Estamos sumando más.`
+        : 'Aún no hay planes. Pronto podrás descubrir actividades por edad y ciudad.';
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-lavender-200 p-6 pb-24">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -95,6 +132,15 @@ export const Explore: React.FC<ExploreProps> = ({ onBack: _onBack, childId }) =>
           <h1 className="text-3xl font-bold text-gray-800 font-poppins-rounded">
             Explorar 🌟
           </h1>
+          {/* Hace visible que la lista está personalizada. Sin esto, el filtro de
+              B2 funciona pero el usuario no se da cuenta de que ocurrió. */}
+          {(ageMonths != null || city) && (
+            <p className="text-sm text-gray-600 font-nunito">
+              Planes para {childName || 'tu hij@'}
+              {ageMonths != null && ` · ${formatAge(ageMonths)}`}
+              {city && ` · ${city}`}
+            </p>
+          )}
         </div>
 
         {/* Buscador */}
@@ -124,24 +170,44 @@ export const Explore: React.FC<ExploreProps> = ({ onBack: _onBack, childId }) =>
 
           {/* Tab: Explorar - Lista de planes desde Supabase */}
           <TabsContent value="explore" className="space-y-4 mt-6">
+            {/* B3: la vía de vuelta. Ocultar deja de ser una decisión irreversible. */}
+            {hiddenCount > 0 && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-full text-gray-600 font-nunito"
+                  onClick={() => setShowHidden((v) => !v)}
+                >
+                  {showHidden ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                  {showHidden
+                    ? 'Esconder los ocultos'
+                    : `Ver ${hiddenCount} plan${hiddenCount === 1 ? '' : 'es'} oculto${hiddenCount === 1 ? '' : 's'}`}
+                </Button>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin text-lavender-500" />
               </div>
-            ) : plans.length === 0 ? (
+            ) : visiblePlans.length === 0 ? (
               <Card className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border-0 text-center">
                 <MapPin className="w-10 h-10 text-blue-400 mx-auto mb-3" />
-                <p className="text-gray-600 font-nunito">
-                  {searchQuery.trim() ? 'No hay planes que coincidan con tu búsqueda.' : 'Aún no hay planes. Pronto podrás descubrir actividades por edad y ciudad.'}
-                </p>
+                <p className="text-gray-600 font-nunito">{emptyMessage}</p>
               </Card>
             ) : (
               <div className="space-y-4">
-                {plans.map((plan) => {
+                {visiblePlans.map((plan) => {
                   const status = interactions.get(plan.id);
                   const busy = interactionLoading === plan.id;
                   return (
-                    <Card key={plan.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-0">
+                    <Card
+                      key={plan.id}
+                      className={`bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border-0${
+                        status === 'hidden' ? ' opacity-60' : ''
+                      }`}
+                    >
                       <div className="flex gap-4">
                         <MapPin className="w-6 h-6 text-blue-400 mt-1 shrink-0" />
                         <div className="flex-1 min-w-0">
